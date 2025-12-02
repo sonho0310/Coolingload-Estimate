@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CoolingLoadEstimate</title>
+    <title>HVAC Manager Pro</title>
     
     <!-- React & ReactDOM (Sử dụng CDN ổn định) -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -17,56 +17,38 @@
     
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        /* Thêm loading spinner css đơn giản */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
         .loading { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 40px; height: 40px; animation: spin 2s linear infinite; margin: 20px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
-        /* Tùy chỉnh in ấn: Ẩn cuộn khi in */
         @media print {
-            body { -webkit-print-color-adjust: exact; }
+            body { -webkit-print-color-adjust: exact; background: white; }
+            .no-print { display: none !important; }
+            .print-full-width { width: 100% !important; max-width: none !important; flex: none !important; }
         }
     </style>
 </head>
-<body class="bg-slate-50 print:bg-white">
-    <!-- Hiển thị Loading ban đầu, React sẽ thay thế cái này khi load xong -->
-    <div id="root">
+<body class="bg-slate-50 text-slate-800 h-screen overflow-hidden flex flex-col">
+    <div id="root" class="h-full">
         <div style="text-align: center; padding-top: 50px; color: #666;">
             <div class="loading"></div>
             <p>Đang tải ứng dụng...</p>
-            <small>(Nếu quá lâu, hãy kiểm tra kết nối mạng để tải thư viện React)</small>
         </div>
     </div>
 
-    <!-- Script báo lỗi nếu React không chạy -->
-    <script>
-        window.onerror = function(message, source, lineno, colno, error) {
-            document.getElementById('root').innerHTML = `
-                <div style="color: red; padding: 20px; text-align: center;">
-                    <h3>Đã xảy ra lỗi!</h3>
-                    <p>${message}</p>
-                    <small>Nguồn: ${source} (Dòng: ${lineno})</small>
-                </div>
-            `;
-        };
-    </script>
-
     <script type="text/babel" data-presets="react">
-        // Kiểm tra xem React đã tải chưa
-        if (typeof React === 'undefined' || typeof ReactDOM === 'undefined') {
-            throw new Error("Không thể tải thư viện React/ReactDOM. Vui lòng kiểm tra kết nối mạng.");
-        }
-
-        const { useState, useEffect, useMemo } = React;
+        const { useState, useEffect, useMemo, useCallback, useRef } = React;
 
         // --- ICON COMPONENTS ---
         const Icon = ({ children, className, ...props }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
-                {children}
-            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>{children}</svg>
         );
 
         const Calculator = (props) => <Icon {...props}><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></Icon>;
-        const Thermometer = (props) => <Icon {...props}><path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/></Icon>;
         const Wind = (props) => <Icon {...props}><path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2"/><path d="M9.6 4.6A2 2 0 1 1 11 8H2"/><path d="M12.6 19.4A2 2 0 1 1 14 16H2"/></Icon>;
         const Snowflake = (props) => <Icon {...props}><line x1="2" x2="22" y1="12" y2="12"/><line x1="12" x2="12" y1="2" y2="22"/><path d="m20 16-4-4 4-4"/><path d="m4 8 4 4-4 4"/><path d="m16 4-4 4-4-4"/><path d="m8 20 4-4 4 4"/></Icon>;
         const Info = (props) => <Icon {...props}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></Icon>;
@@ -78,9 +60,115 @@
         const List = (props) => <Icon {...props}><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></Icon>;
         const Pencil = (props) => <Icon {...props}><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></Icon>;
         const Printer = (props) => <Icon {...props}><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></Icon>;
+        const Folder = (props) => <Icon {...props}><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 2H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></Icon>;
+        const FolderOpen = (props) => <Icon {...props}><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 2H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/><path d="M2 10h20"/></Icon>;
+        const FileText = (props) => <Icon {...props}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></Icon>;
+        const ChevronRight = (props) => <Icon {...props}><polyline points="9 18 15 12 9 6"/></Icon>;
+        const ChevronDown = (props) => <Icon {...props}><polyline points="6 9 12 15 18 9"/></Icon>;
+        const Save = (props) => <Icon {...props}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></Icon>;
+        const Undo2 = (props) => <Icon {...props}><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11"/></Icon>;
+        const Redo2 = (props) => <Icon {...props}><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5v0A5.5 5.5 0 0 0 9.5 20H13"/></Icon>;
 
-        // --- APP COMPONENT ---
-        const MultiPurposeLoadCalc = () => {
+        // --- CONSTANTS ---
+        const LOAD_FACTORS = {
+            sales_general: { label: 'Siêu thị - Khu bán hàng chung', value: 220, desc: 'Kệ đồ khô, mật độ trung bình.', group: 'Siêu thị / Thương mại' },
+            sales_fresh: { label: 'Siêu thị - Khu đồ tươi/đông lạnh', value: 190, desc: 'Có tủ mát hỗ trợ tải.', group: 'Siêu thị / Thương mại' },
+            checkout: { label: 'Siêu thị - Thu ngân/Cửa', value: 280, desc: 'Mật độ người cao, thất thoát nhiệt.', group: 'Siêu thị / Thương mại' },
+            warehouse: { label: 'Kho chứa hàng', value: 160, desc: 'Ít người, chủ yếu bảo quản.', group: 'Siêu thị / Thương mại' },
+            res_bedroom: { label: 'Nhà ở - Phòng ngủ', value: 175, desc: 'Tải nhiệt thấp, không gian kín.', group: 'Nhà ở / Căn hộ' },
+            res_living: { label: 'Nhà ở - Phòng khách', value: 235, desc: 'Không gian mở, TV, đèn, đi lại.', group: 'Nhà ở / Căn hộ' },
+            res_kitchen: { label: 'Nhà ở - Bếp ăn', value: 265, desc: 'Sinh nhiệt từ nấu nướng.', group: 'Nhà ở / Căn hộ' },
+            office_general: { label: 'Văn phòng - Làm việc chung', value: 220, desc: 'Máy tính, người ngồi tĩnh.', group: 'Văn phòng' },
+            office_meeting: { label: 'Văn phòng - Phòng họp', value: 295, desc: 'Mật độ người dày đặc, máy chiếu.', group: 'Văn phòng' },
+            school_class: { label: 'Lớp học tiêu chuẩn', value: 220, desc: 'Đông người nhưng ít thiết bị nhiệt.', group: 'Trường học / Nhà trẻ' },
+            school_nap: { label: 'Phòng ngủ trưa (Nhà trẻ)', value: 175, desc: 'Yêu cầu yên tĩnh, tải thấp.', group: 'Trường học / Nhà trẻ' },
+            school_hall: { label: 'Hội trường / Phòng chức năng', value: 265, desc: 'Không gian lớn, trần cao.', group: 'Trường học / Nhà trẻ' },
+            restaurant: { label: 'Nhà hàng / Quán ăn', value: 295, desc: 'Mùi thức ăn, người ra vào nhiều.', group: 'Dịch vụ khác' },
+            hotel_room: { label: 'Khách sạn - Phòng ngủ', value: 190, desc: 'Tải tương đương phòng ngủ nhà ở.', group: 'Dịch vụ khác' },
+            server_room: { label: 'Phòng Server / Máy chủ', value: 440, desc: 'Thiết bị tỏa nhiệt cực lớn (Cần tính kỹ).', group: 'Dịch vụ khác' },
+        };
+
+        const HEIGHT_FACTORS = {
+            standard: { label: 'Tiêu chuẩn (< 3.5m)', multiplier: 1.0 },
+            high: { label: 'Cao (3.5m - 5m)', multiplier: 1.15 },
+            very_high: { label: 'Thông tầng (> 5m)', multiplier: 1.3 },
+        };
+
+        const TreeItem = ({ item, level = 0, onSelect, activeId, onToggle, onCreateFile, onRename }) => {
+            const isFolder = item.type === 'folder';
+            const isActive = activeId === item.id;
+            const paddingLeft = level * 16 + 12;
+
+            return (
+                <div>
+                    <div 
+                        className={`flex items-center gap-2 py-1.5 px-2 cursor-pointer transition select-none group rounded-md mx-1
+                            ${isActive ? 'bg-blue-100 text-blue-700 font-medium' : 'hover:bg-slate-100 text-slate-700'}`}
+                        style={{ paddingLeft: `${paddingLeft}px` }}
+                        onClick={() => isFolder ? onToggle(item.id) : onSelect(item.id)}
+                    >
+                        {isFolder && (
+                            <span className="text-slate-400">
+                                {item.isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                            </span>
+                        )}
+                        <span className={isFolder ? "text-yellow-500" : "text-blue-500"}>
+                            {isFolder ? (item.isOpen ? <FolderOpen className="w-4 h-4" /> : <Folder className="w-4 h-4" />) : <FileText className="w-4 h-4" />}
+                        </span>
+                        <span className="truncate flex-1 text-sm">{item.name}</span>
+                        
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); onRename(item.id, item.name); }}
+                                className="hover:bg-slate-200 p-1 rounded transition"
+                                title="Đổi tên"
+                            >
+                                <Pencil className="w-3 h-3 text-slate-500" />
+                            </button>
+                            
+                            {isFolder && (
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); onCreateFile(item.id); }}
+                                    className="hover:bg-slate-200 p-1 rounded transition"
+                                    title="Tạo bảng tính mới"
+                                >
+                                    <Plus className="w-3 h-3 text-slate-500" />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                    {isFolder && item.isOpen && item.children && (
+                        <div>
+                            {item.children.map(child => (
+                                <TreeItem 
+                                    key={child.id} 
+                                    item={child} 
+                                    level={level + 1} 
+                                    onSelect={onSelect} 
+                                    activeId={activeId}
+                                    onToggle={onToggle}
+                                    onCreateFile={onCreateFile}
+                                    onRename={onRename}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [treeData, setTreeData] = useState(() => {
+                const saved = localStorage.getItem('hvac_tree_data');
+                return saved ? JSON.parse(saved) : [
+                    { id: 'f1', name: 'Dự án mẫu 2024', type: 'folder', isOpen: true, children: [
+                        { id: 'p1', name: 'Siêu thị AEON', type: 'file', data: [] },
+                        { id: 'p2', name: 'Nhà phố A.Bình', type: 'file', data: [] }
+                    ]}
+                ];
+            });
+            const [activeFileId, setActiveFileId] = useState('p1');
+            
             const [area, setArea] = useState('');
             const [zoneType, setZoneType] = useState('sales_general');
             const [ceilingHeight, setCeilingHeight] = useState('standard');
@@ -89,45 +177,133 @@
             const [copied, setCopied] = useState(false);
             const [savedZones, setSavedZones] = useState([]);
             const [editingId, setEditingId] = useState(null);
+            
+            const [history, setHistory] = useState([]);
+            const [historyIndex, setHistoryIndex] = useState(-1);
+            const [isSaving, setIsSaving] = useState(false);
+            const [saveStatus, setSaveStatus] = useState(''); 
 
-            // CẬP NHẬT: Định mức tải nhiệt (W/m2)
-            // Các giá trị đã được quy đổi làm tròn từ BTU/m2 sang W/m2 cho chẵn
-            const loadFactors = {
-                // --- NHÓM SIÊU THỊ ---
-                sales_general: { label: 'Siêu thị - Khu bán hàng chung', value: 250, desc: 'Kệ đồ khô, mật độ trung bình.', group: 'Siêu thị / Thương mại' },
-                sales_fresh: { label: 'Siêu thị - Khu đồ tươi/đông lạnh', value: 250, desc: 'Có tủ mát hỗ trợ tải.', group: 'Siêu thị / Thương mại' },
-                checkout: { label: 'Siêu thị - Thu ngân/Cửa', value: 280, desc: 'Mật độ người cao, thất thoát nhiệt.', group: 'Siêu thị / Thương mại' },
-                warehouse: { label: 'Kho chứa hàng', value: 160, desc: 'Ít người, chủ yếu bảo quản.', group: 'Siêu thị / Thương mại' },
+            useEffect(() => {
+                const findFile = (nodes) => {
+                    for (const node of nodes) {
+                        if (node.id === activeFileId) return node;
+                        if (node.children) {
+                            const found = findFile(node.children);
+                            if (found) return found;
+                        }
+                    }
+                    return null;
+                };
+                const file = findFile(treeData);
+                if (file && file.type === 'file') {
+                    const data = file.data || [];
+                    setSavedZones(data);
+                    setArea(''); setZoneName(''); setResult(null); setEditingId(null);
+                    setHistory([data]);
+                    setHistoryIndex(0);
+                }
+            }, [activeFileId]);
 
-                // --- NHÓM NHÀ Ở / CĂN HỘ ---
-                res_bedroom: { label: 'Nhà ở - Phòng ngủ', value: 175, desc: 'Tải nhiệt thấp, không gian kín.', group: 'Nhà ở / Căn hộ' },
-                res_living: { label: 'Nhà ở - Phòng khách', value: 235, desc: 'Không gian mở, TV, đèn, đi lại.', group: 'Nhà ở / Căn hộ' },
-                res_kitchen: { label: 'Nhà ở - Bếp ăn', value: 265, desc: 'Sinh nhiệt từ nấu nướng.', group: 'Nhà ở / Căn hộ' },
-
-                // --- NHÓM VĂN PHÒNG ---
-                office_general: { label: 'Văn phòng - Làm việc chung', value: 220, desc: 'Máy tính, người ngồi tĩnh.', group: 'Văn phòng' },
-                office_meeting: { label: 'Văn phòng - Phòng họp', value: 295, desc: 'Mật độ người dày đặc, máy chiếu.', group: 'Văn phòng' },
-
-                // --- NHÓM GIÁO DỤC ---
-                school_class: { label: 'Lớp học tiêu chuẩn', value: 220, desc: 'Đông người nhưng ít thiết bị nhiệt.', group: 'Trường học / Nhà trẻ' },
-                school_nap: { label: 'Nhà trẻ', value: 250, desc: 'Yêu cầu yên tĩnh, tải thấp.', group: 'Trường học / Nhà trẻ' },
-                school_hall: { label: 'Hội trường / Phòng chức năng', value: 265, desc: 'Không gian lớn, trần cao.', group: 'Trường học / Nhà trẻ' },
-
-                // --- NHÓM DỊCH VỤ KHÁC ---
-                restaurant: { label: 'Nhà hàng / Quán ăn', value: 295, desc: 'Mùi thức ăn, người ra vào nhiều.', group: 'Dịch vụ khác' },
-                hotel_room: { label: 'Khách sạn - Phòng ngủ', value: 190, desc: 'Tải tương đương phòng ngủ nhà ở.', group: 'Dịch vụ khác' },
-                server_room: { label: 'Phòng Server / Máy chủ', value: 440, desc: 'Thiết bị tỏa nhiệt cực lớn (Cần tính kỹ).', group: 'Dịch vụ khác' },
+            const updateTreeData = (newZones) => {
+                const updateNodes = (nodes) => {
+                    return nodes.map(node => {
+                        if (node.id === activeFileId) return { ...node, data: newZones };
+                        if (node.children) return { ...node, children: updateNodes(node.children) };
+                        return node;
+                    });
+                };
+                setTreeData(prev => updateNodes(prev));
             };
 
-            const heightFactors = {
-                standard: { label: 'Tiêu chuẩn (< 3.5m)', multiplier: 1.0 },
-                high: { label: 'Cao (3.5m - 5m)', multiplier: 1.15 },
-                very_high: { label: 'Thông tầng (> 5m)', multiplier: 1.3 },
+            useEffect(() => {
+                localStorage.setItem('hvac_tree_data', JSON.stringify(treeData));
+            }, [treeData]);
+
+            const pushToHistory = (newZones) => {
+                const newHistory = history.slice(0, historyIndex + 1);
+                newHistory.push(newZones);
+                setHistory(newHistory);
+                setHistoryIndex(newHistory.length - 1);
+                setSavedZones(newZones);
+                updateTreeData(newZones);
+                setSaveStatus('unsaved');
+            };
+
+            const handleUndo = () => {
+                if (historyIndex > 0) {
+                    const prevIndex = historyIndex - 1;
+                    setHistoryIndex(prevIndex);
+                    const prevZones = history[prevIndex];
+                    setSavedZones(prevZones);
+                    updateTreeData(prevZones);
+                    setSaveStatus('unsaved');
+                }
+            };
+
+            const handleRedo = () => {
+                if (historyIndex < history.length - 1) {
+                    const nextIndex = historyIndex + 1;
+                    setHistoryIndex(nextIndex);
+                    const nextZones = history[nextIndex];
+                    setSavedZones(nextZones);
+                    updateTreeData(nextZones);
+                    setSaveStatus('unsaved');
+                }
+            };
+
+            const handleManualSave = () => {
+                setIsSaving(true);
+                setTimeout(() => {
+                    localStorage.setItem('hvac_tree_data', JSON.stringify(treeData));
+                    setIsSaving(false);
+                    setSaveStatus('saved');
+                    setTimeout(() => setSaveStatus(''), 2000);
+                }, 500);
+            };
+
+            const toggleFolder = (folderId) => {
+                const toggle = (nodes) => nodes.map(node => {
+                    if (node.id === folderId) return { ...node, isOpen: !node.isOpen };
+                    if (node.children) return { ...node, children: toggle(node.children) };
+                    return node;
+                });
+                setTreeData(prev => toggle(prev));
+            };
+
+            const createFolder = () => {
+                const name = prompt("Nhập tên thư mục mới:", "Dự án mới");
+                if (!name) return;
+                setTreeData([...treeData, { id: `f${Date.now()}`, name, type: 'folder', isOpen: true, children: [] }]);
+            };
+
+            const createFile = (folderId) => {
+                const name = prompt("Nhập tên bảng tính mới:", "Tầng...");
+                if (!name) return;
+                const newFile = { id: `p${Date.now()}`, name, type: 'file', data: [] };
+                const addFile = (nodes) => nodes.map(node => {
+                    if (node.id === folderId) return { ...node, children: [...node.children, newFile], isOpen: true };
+                    if (node.children) return { ...node, children: addFile(node.children) };
+                    return node;
+                });
+                setTreeData(prev => addFile(prev));
+                setActiveFileId(newFile.id);
+            };
+
+            const renameItem = (itemId, currentName) => {
+                const newName = prompt("Nhập tên mới:", currentName);
+                if (!newName || newName === currentName) return;
+
+                const updateName = (nodes) => nodes.map(node => {
+                    if (node.id === itemId) return { ...node, name: newName };
+                    if (node.children) return { ...node, children: updateName(node.children) };
+                    return node;
+                });
+                setTreeData(prev => updateName(prev));
             };
 
             const groupedOptions = useMemo(() => {
                 const groups = {};
-                Object.entries(loadFactors).forEach(([key, data]) => {
+                Object.entries(LOAD_FACTORS).forEach(([key, data]) => {
                     if (!groups[data.group]) groups[data.group] = [];
                     groups[data.group].push({ key, ...data });
                 });
@@ -135,418 +311,246 @@
             }, []);
 
             useEffect(() => {
-                calculateLoad();
-            }, [area, zoneType, ceilingHeight]);
-
-            const calculateLoad = () => {
                 const areaNum = parseFloat(area);
                 if (!areaNum || areaNum <= 0) {
-                    setResult(null);
-                    return;
+                    setResult(null); return;
                 }
-
-                // baseLoadPerM2 bây giờ là Watt/m2
-                const baseLoadPerM2 = loadFactors[zoneType].value;
-                const heightMultiplier = heightFactors[ceilingHeight].multiplier;
-
-                // Tổng Watt = m2 * W/m2 * hệ số trần
-                const totalWatts = Math.round(areaNum * baseLoadPerM2 * heightMultiplier);
-                
-                // Quy đổi sang BTU (1 Watt ~ 3.412142 BTU/h)
+                const baseLoad = LOAD_FACTORS[zoneType].value;
+                const heightMult = HEIGHT_FACTORS[ceilingHeight].multiplier;
+                const totalWatts = Math.round(areaNum * baseLoad * heightMult);
                 const totalBtu = Math.round(totalWatts * 3.412142);
-                
-                const hp = (totalBtu / 9000).toFixed(1);
-                // kW Lạnh (Thermal) = Total Watts / 1000
-                const kw = (totalWatts / 1000).toFixed(2);
-                const ton = (totalBtu / 12000).toFixed(1);
-
-                setResult({ btu: totalBtu, hp: hp, kw: kw, ton: ton });
-            };
+                setResult({ btu: totalBtu, hp: (totalBtu / 9000).toFixed(1), kw: (totalWatts / 1000).toFixed(2), ton: (totalBtu / 12000).toFixed(1) });
+            }, [area, zoneType, ceilingHeight]);
 
             const handleSaveZone = () => {
                 if (!result || !area) return;
-
                 const zoneData = {
+                    id: editingId || Date.now(),
                     name: zoneName || `Khu vực ${savedZones.length + 1}`,
                     area: parseFloat(area),
-                    zoneType,
-                    zoneTypeLabel: loadFactors[zoneType].label,
-                    ceilingHeight,
-                    ceilingHeightLabel: heightFactors[ceilingHeight].label,
-                    btu: result.btu,
-                    hp: parseFloat(result.hp),
-                    kw: parseFloat(result.kw)
+                    zoneType, zoneTypeLabel: LOAD_FACTORS[zoneType].label,
+                    ceilingHeight, ceilingHeightLabel: HEIGHT_FACTORS[ceilingHeight].label,
+                    ...result
                 };
-
-                if (editingId) {
-                    setSavedZones(savedZones.map(z => z.id === editingId ? { ...zoneData, id: editingId } : z));
-                    setEditingId(null);
-                } else {
-                    setSavedZones([...savedZones, { ...zoneData, id: Date.now() }]);
-                }
-                
-                setZoneName('');
-                setArea('');
-                setResult(null);
-            };
-
-            const handleEditZone = (zone) => {
-                setArea(zone.area);
-                setZoneType(zone.zoneType);
-                setCeilingHeight(zone.ceilingHeight);
-                setZoneName(zone.name);
-                setEditingId(zone.id);
+                const newZones = editingId ? savedZones.map(z => z.id === editingId ? zoneData : z) : [...savedZones, zoneData];
+                pushToHistory(newZones);
+                setZoneName(''); setArea(''); setResult(null); setEditingId(null);
             };
 
             const handleDeleteZone = (id) => {
-                setSavedZones(savedZones.filter(z => z.id !== id));
-                if (editingId === id) handleCancelEdit();
+                const newZones = savedZones.filter(z => z.id !== id);
+                pushToHistory(newZones);
+                if (editingId === id) { setEditingId(null); setZoneName(''); setArea(''); setResult(null); }
             };
 
-            const handleCancelEdit = () => {
-                setEditingId(null);
-                setZoneName('');
-                setArea('');
-                setResult(null);
+            const handleEditZone = (zone) => {
+                setArea(zone.area); setZoneType(zone.zoneType); setCeilingHeight(zone.ceilingHeight); setZoneName(zone.name); setEditingId(zone.id);
             };
 
-            const handleReset = () => {
-                handleCancelEdit();
-                setZoneType('sales_general');
-                setCeilingHeight('standard');
-            };
-
-            const handlePrint = () => {
-                window.print();
-            };
+            const handlePrint = () => window.print();
 
             const copyToClipboard = () => {
-                let text = "";
-                if (savedZones.length > 0) {
-                    text = "BẢNG TÍNH TẢI LẠNH TỔNG HỢP\n---------------------------\n";
-                    savedZones.forEach((z, i) => {
-                        text += `${i + 1}. ${z.name} (${z.area}m2): ${z.kw} kW | ${z.hp} HP | ${z.btu.toLocaleString()} BTU/h\n`;
-                    });
-                    text += "---------------------------\n";
-                    text += `TỔNG CỘNG: ${totalStats.kw.toFixed(1)} kW | ${totalStats.hp.toFixed(1)} HP | ${totalStats.btu.toLocaleString()} BTU/h`;
-                } else if (result) {
-                    text = `TÍNH TẢI LẠNH: ${area}m2 - ${result.kw} kW - ${result.hp} HP - ${result.btu.toLocaleString()} BTU/h`;
-                } else {
-                    return;
-                }
-
-                const textArea = document.createElement("textarea");
-                textArea.value = text;
-                document.body.appendChild(textArea);
-                textArea.select();
-                try {
-                    document.execCommand('copy');
-                    setCopied(true);
-                    setTimeout(() => setCopied(false), 2000);
-                } catch (err) {
-                    console.error('Lỗi copy', err);
-                }
-                document.body.removeChild(textArea);
+                let text = `DỰ ÁN: ${treeData.flatMap(f => f.children || []).find(c => c.id === activeFileId)?.name}\n---------------------------\n`;
+                savedZones.forEach((z, i) => text += `${i + 1}. ${z.name} (${z.area}m2): ${z.kw} kW | ${z.hp} HP | ${z.btu.toLocaleString()} BTU/h\n`);
+                const ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select();
+                try { document.execCommand('copy'); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch (e) {}
+                document.body.removeChild(ta);
             };
 
-            const totalStats = savedZones.reduce((acc, curr) => ({
-                area: acc.area + curr.area,
-                btu: acc.btu + curr.btu,
-                hp: acc.hp + curr.hp,
-                kw: acc.kw + curr.kw
-            }), { area: 0, btu: 0, hp: 0, kw: 0 });
-
+            const totalStats = savedZones.reduce((acc, curr) => ({ area: acc.area + curr.area, btu: acc.btu + curr.btu, hp: acc.hp + parseFloat(curr.hp), kw: acc.kw + parseFloat(curr.kw) }), { area: 0, btu: 0, hp: 0, kw: 0 });
+            
             const getRecommendation = (hp) => {
-                const hpNum = parseFloat(hp);
-                if (hpNum < 2.5) return "Máy treo tường (Wall mounted)";
-                if (hpNum < 6) return "Máy Cassette hoặc Giấu trần (SkyAir)";
-                if (hpNum < 20) return "Tủ đứng hoặc Giấu trần công nghiệp (Packaged)";
-                return "Hệ thống trung tâm VRV/VRF hoặc Chiller";
+                if (hp < 2.5) return "Máy treo tường";
+                if (hp < 6) return "Cassette / Giấu trần";
+                if (hp < 20) return "Tủ đứng / Packaged";
+                return "VRV / Chiller";
             };
-
-            // Helper đổi ngược Watt sang BTU để hiển thị
             const wattToBtu = (watt) => Math.round(watt * 3.412142);
-            // Watt sang kW
-            const wattToKw = (watt) => (watt / 1000).toFixed(3);
 
             return (
-                <div className="min-h-screen bg-slate-50 p-4 md:p-6 font-sans text-slate-800 print:bg-white print:p-0">
-                    <div className="max-w-7xl mx-auto space-y-6">
-                        
-                        {/* Header */}
-                        <div className="bg-white rounded-2xl shadow-sm p-4 md:p-6 border-l-8 border-green-600 flex items-center justify-between print:hidden">
-                            <div>
-                                <h1 className="text-2xl md:text-3xl font-bold text-slate-800 flex items-center gap-2">
-                                    <Snowflake className="text-green-500 w-8 h-8" />
-                                    Tính Tải Lạnh Nhanh
-                                </h1>
-                                <p className="text-slate-500 mt-1">Công cụ đa dụng: Siêu thị, Nhà ở, Văn phòng, Trường học...</p>
-                            </div>
-                            <div className="hidden md:block">
-                                <Calculator className="w-12 h-12 text-slate-200" />
+                <div className="flex h-screen w-full bg-slate-50 font-sans text-slate-800 overflow-hidden">
+                    {/* SIDEBAR */}
+                    <div className="w-64 bg-white border-r border-slate-200 flex flex-col no-print shrink-0">
+                        <div className="p-3 border-b border-slate-100 flex items-center gap-2">
+                            <div className="w-7 h-7 bg-blue-600 rounded flex items-center justify-center text-white"><List className="w-4 h-4" /></div>
+                            <h1 className="font-bold text-slate-700 text-sm">Quản lý Dự án</h1>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-2 group space-y-1">{treeData.map(item => <TreeItem key={item.id} item={item} onSelect={setActiveFileId} activeId={activeFileId} onToggle={toggleFolder} onCreateFile={createFile} onRename={renameItem} />)}</div>
+                        <div className="p-2 border-t border-slate-100"><button onClick={createFolder} className="w-full flex items-center justify-center gap-2 bg-slate-50 hover:bg-slate-100 text-slate-600 py-1.5 rounded text-xs font-medium transition border border-slate-200"><Plus className="w-3 h-3" /> Thư mục mới</button></div>
+                    </div>
+
+                    {/* MAIN CONTENT */}
+                    <div className="flex-1 flex flex-col h-full overflow-hidden print-full-width">
+                        {/* TOOLBAR */}
+                        <div className="bg-white border-b border-slate-200 px-4 py-2 flex justify-between items-center no-print shadow-sm z-10 shrink-0 h-14">
+                            <h2 className="text-lg font-bold flex items-center gap-2 text-slate-800 truncate">
+                                {treeData.flatMap(f => f.children || []).find(c => c.id === activeFileId)?.name || 'Chưa chọn file'}
+                            </h2>
+                            <div className="flex items-center gap-2">
+                                <div className="flex bg-slate-100 rounded p-0.5 mr-2">
+                                    <button onClick={handleUndo} disabled={historyIndex <= 0} className="p-1.5 text-slate-600 hover:bg-white hover:text-blue-600 rounded disabled:opacity-30 disabled:hover:bg-transparent transition" title="Hoàn tác"><Undo2 className="w-4 h-4" /></button>
+                                    <div className="w-px bg-slate-300 my-1 mx-0.5"></div>
+                                    <button onClick={handleRedo} disabled={historyIndex >= history.length - 1} className="p-1.5 text-slate-600 hover:bg-white hover:text-blue-600 rounded disabled:opacity-30 disabled:hover:bg-transparent transition" title="Làm lại"><Redo2 className="w-4 h-4" /></button>
+                                </div>
+                                <button onClick={handleManualSave} className={`flex items-center gap-2 px-3 py-1.5 rounded text-sm font-medium transition shadow-sm ${saveStatus === 'saved' ? 'bg-green-600 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}>
+                                    {isSaving ? <span className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent"></span> : (saveStatus === 'saved' ? <Check className="w-3 h-3" /> : <Save className="w-3 h-3" />)}
+                                    {saveStatus === 'saved' ? 'Đã lưu' : 'Lưu'}
+                                </button>
                             </div>
                         </div>
 
-                        {/* --- LAYOUT CHÍNH --- */}
-                        <div className="flex flex-col lg:flex-row gap-6 print:block">
-                            
-                            {/* --- CỘT TRÁI: NHẬP LIỆU (Ẩn khi in) --- */}
-                            <div className="w-full lg:w-auto lg:flex-none space-y-4 print:hidden">
-                                <div className="bg-white rounded-xl shadow-sm p-5 border border-slate-200 sticky top-4 lg:w-fit">
-                                    <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-slate-800 whitespace-nowrap">
-                                        <Wind className="w-5 h-5 text-green-600" />
-                                        {editingId ? 'Sửa thông tin' : 'Thông số khu vực'}
-                                    </h2>
+                        {/* WORKSPACE */}
+                        <div className="flex-1 overflow-y-auto p-4 bg-slate-50/50">
+                            <div className="max-w-[1600px] mx-auto space-y-6">
+                                <div className="hidden print:block mb-4 border-b pb-2"><h1 className="text-2xl font-bold">BẢNG TÍNH TẢI LẠNH</h1></div>
 
-                                    <div className="space-y-4 min-w-[300px]">
-                                        {/* Input fields */}
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Tên khu vực</label>
-                                            <input
-                                                type="text"
-                                                value={zoneName}
-                                                onChange={(e) => setZoneName(e.target.value)}
-                                                placeholder="VD: Phòng khách..."
-                                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
-                                            />
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Diện tích (m²) <span className="text-red-500">*</span></label>
-                                            <input
-                                                type="number"
-                                                min="1"
-                                                value={area}
-                                                onChange={(e) => setArea(e.target.value)}
-                                                placeholder="Nhập diện tích..."
-                                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none font-semibold text-lg"
-                                            />
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Loại không gian</label>
-                                            <select
-                                                value={zoneType}
-                                                onChange={(e) => setZoneType(e.target.value)}
-                                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white"
-                                            >
-                                                {Object.entries(groupedOptions).map(([groupName, items]) => (
-                                                    <optgroup key={groupName} label={groupName}>
-                                                        {items.map(item => (
-                                                            <option key={item.key} value={item.key}>{item.label}</option>
-                                                        ))}
-                                                    </optgroup>
-                                                ))}
-                                            </select>
+                                <div className="flex flex-col lg:flex-row gap-4 items-start">
+                                    {/* COMPACT INPUT SIDEBAR */}
+                                    <div className="w-full lg:w-[320px] shrink-0 no-print">
+                                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4 sticky top-0">
+                                            <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500 mb-3 flex items-center gap-2">
+                                                <Wind className="w-4 h-4" /> {editingId ? 'Sửa' : 'Nhập'} thông số
+                                            </h2>
                                             
-                                            <div className="mt-2 bg-blue-50 p-2 rounded border border-blue-100 text-xs text-blue-800">
-                                                <div className="font-semibold mb-1">Mật độ tải lạnh định mức:</div>
-                                                <div className="grid grid-cols-2 gap-x-2 gap-y-1 whitespace-nowrap">
-                                                    <span>• {loadFactors[zoneType].value} W/m²</span>
-                                                    <span>• {wattToBtu(loadFactors[zoneType].value)} BTU/m²</span>
-                                                </div>
-                                                <div className="mt-1 pt-1 border-t border-blue-200 text-slate-500 italic text-wrap">
-                                                    {loadFactors[zoneType].desc}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Độ cao trần</label>
-                                            <select
-                                                value={ceilingHeight}
-                                                onChange={(e) => setCeilingHeight(e.target.value)}
-                                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white"
-                                            >
-                                                {Object.entries(heightFactors).map(([key, data]) => (
-                                                    <option key={key} value={key}>{data.label}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    </div>
-
-                                    {/* Small Live Preview */}
-                                    {result && (
-                                        <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-100 text-center">
-                                            <div className="text-xs text-green-600 font-bold uppercase mb-1">Kết quả tính nhanh</div>
-                                            <div className="text-2xl font-bold text-green-700">{result.kw} <span className="text-sm font-medium">kW</span></div>
-                                            <div className="text-sm text-green-600 font-medium">~ {result.hp} HP | {result.btu.toLocaleString()} BTU</div>
-                                        </div>
-                                    )}
-
-                                    {/* Action Buttons */}
-                                    <div className="flex gap-2 mt-4">
-                                        <button 
-                                            onClick={handleReset}
-                                            className="px-4 py-2 border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-50 transition"
-                                            title="Đặt lại"
-                                        >
-                                            <RotateCcw className="w-5 h-5" />
-                                        </button>
-                                        <button 
-                                            onClick={handleSaveZone}
-                                            disabled={!result}
-                                            className={`flex-1 py-2 px-4 rounded-lg font-bold transition flex items-center justify-center gap-2 shadow-sm ${
-                                                result 
-                                                ? (editingId ? 'bg-orange-500 hover:bg-orange-600 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white') 
-                                                : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                                            }`}
-                                        >
-                                            {editingId ? <Pencil className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
-                                            {editingId ? 'Cập nhật' : 'Thêm dòng'}
-                                        </button>
-                                        {editingId && (
-                                            <button 
-                                                onClick={handleCancelEdit}
-                                                className="px-3 py-2 border border-red-200 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition text-sm font-medium"
-                                            >
-                                                Hủy
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* --- CỘT PHẢI: BẢNG TỔNG HỢP --- */}
-                            <div className="flex-1 min-w-0 space-y-4 print:w-full">
-                                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-full min-h-[500px] print:shadow-none print:border-none print:h-auto">
-                                    <div className="bg-slate-50 p-4 border-b border-slate-200 flex justify-between items-center print:bg-white print:border-b-2 print:px-0">
-                                        <h3 className="font-bold text-slate-700 flex items-center gap-2 text-xl print:text-black">
-                                            <List className="w-5 h-5 text-green-600 print:hidden" />
-                                            Bảng Tổng Hợp Công Suất
-                                        </h3>
-                                        {savedZones.length > 0 && (
-                                            <div className="flex gap-2 print:hidden">
-                                                <button 
-                                                    onClick={handlePrint}
-                                                    className="flex items-center gap-1 text-xs bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-3 py-1.5 rounded-lg transition shadow-sm"
-                                                    title="In bảng này"
-                                                >
-                                                    <Printer className="w-3 h-3" /> In bảng
-                                                </button>
-                                                <button 
-                                                    onClick={copyToClipboard}
-                                                    className="flex items-center gap-1 text-xs bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-3 py-1.5 rounded-lg transition shadow-sm"
-                                                >
-                                                    {copied ? <Check className="w-3 h-3 text-green-600" /> : <Copy className="w-3 h-3" />}
-                                                    {copied ? 'Đã chép' : 'Sao chép'}
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-                                    
-                                    <div className="overflow-x-auto flex-1">
-                                        <table className="w-full text-sm text-left">
-                                            <thead className="bg-slate-100 text-slate-600 font-semibold uppercase text-xs sticky top-0 print:bg-white print:text-black print:border-b">
-                                                <tr>
-                                                    <th className="px-4 py-3 w-12 print:px-2">STT</th>
-                                                    <th className="px-4 py-3 print:px-2">Khu vực</th>
-                                                    <th className="px-4 py-3 print:px-2">Loại / Trần</th>
-                                                    <th className="px-4 py-3 text-right print:px-2">Diện tích (m²)</th>
-                                                    <th className="px-4 py-3 text-right print:px-2">kW Lạnh</th>
-                                                    <th className="px-4 py-3 text-right print:px-2">HP</th>
-                                                    <th className="px-4 py-3 text-right print:px-2">BTU/h</th>
-                                                    <th className="px-4 py-3 text-center w-24 print:hidden"></th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-slate-100 print:divide-slate-200">
-                                                {savedZones.length === 0 ? (
-                                                    <tr>
-                                                        <td colSpan="8" className="px-4 py-12 text-center text-slate-400">
-                                                            <div className="flex flex-col items-center justify-center">
-                                                                <List className="w-12 h-12 text-slate-200 mb-3" />
-                                                                <p className="font-medium">Chưa có dữ liệu</p>
-                                                                <p className="text-xs mt-1">Vui lòng nhập thông tin bên trái và bấm "Thêm dòng"</p>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                ) : (
-                                                    savedZones.map((zone, index) => (
-                                                        <tr key={zone.id} className={`hover:bg-slate-50 transition ${editingId === zone.id ? 'bg-blue-50' : ''} print:hover:bg-transparent`}>
-                                                            <td className="px-4 py-3 text-slate-400 print:text-black print:px-2">{index + 1}</td>
-                                                            <td className="px-4 py-3 font-medium text-slate-800 print:text-black print:px-2">{zone.name}</td>
-                                                            <td className="px-4 py-3 text-slate-500 print:text-black print:px-2">
-                                                                <div className="flex flex-col">
-                                                                    <span>{zone.zoneTypeLabel}</span>
-                                                                    <span className="text-xs text-slate-400 print:text-slate-600">Trần: {zone.ceilingHeightLabel}</span>
-                                                                </div>
-                                                            </td>
-                                                            <td className="px-4 py-3 text-right font-medium print:text-black print:px-2">{zone.area}</td>
-                                                            <td className="px-4 py-3 text-right font-medium text-slate-600 print:text-black print:px-2">{zone.kw}</td>
-                                                            <td className="px-4 py-3 text-right font-medium print:text-black print:px-2">{zone.hp}</td>
-                                                            <td className="px-4 py-3 text-right text-green-600 font-semibold print:text-black print:px-2">{zone.btu.toLocaleString()}</td>
-                                                            <td className="px-4 py-3 text-center print:hidden">
-                                                                <div className="flex items-center justify-center gap-1">
-                                                                    <button 
-                                                                        onClick={() => handleEditZone(zone)}
-                                                                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition"
-                                                                        title="Sửa"
-                                                                    >
-                                                                        <Pencil className="w-4 h-4" />
-                                                                    </button>
-                                                                    <button 
-                                                                        onClick={() => handleDeleteZone(zone.id)}
-                                                                        className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition"
-                                                                        title="Xóa"
-                                                                    >
-                                                                        <Trash2 className="w-4 h-4" />
-                                                                    </button>
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                    ))
-                                                )}
-                                            </tbody>
-                                        </table>
-                                    </div>
-
-                                    {/* Footer Summary */}
-                                    {savedZones.length > 0 && (
-                                        <div className="bg-slate-800 text-white p-4 print:bg-white print:text-black print:border-t-2 print:border-black">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                                            <div className="space-y-3">
                                                 <div>
-                                                    <div className="text-xs text-slate-400 uppercase tracking-wider mb-1 print:text-black print:font-bold">Tổng cộng toàn công trình</div>
-                                                    <div className="flex items-baseline gap-4 print:block">
-                                                        <div className="text-2xl font-bold text-white print:text-black print:text-xl">
-                                                            {totalStats.hp.toFixed(1)} HP <span className="text-base font-normal print:inline"> ~ {totalStats.kw.toFixed(1)} kW Lạnh</span>
-                                                        </div>
-                                                        <div className="text-sm text-slate-300 print:hidden">~ {totalStats.kw.toFixed(1)} kW Lạnh</div>
-                                                        <div className="text-sm text-slate-400 border-l border-slate-600 pl-4 print:border-none print:pl-0 print:text-black print:mt-1">
-                                                            Diện tích sàn: {totalStats.area} m²
-                                                        </div>
+                                                    <label className="block text-xs font-medium text-slate-500 mb-1">Tên khu vực</label>
+                                                    <input type="text" value={zoneName} onChange={(e) => setZoneName(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 outline-none" placeholder="VD: Phòng khách" />
+                                                </div>
+                                                
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <div className="col-span-1">
+                                                        <label className="block text-xs font-medium text-slate-500 mb-1">Diện tích (m²)</label>
+                                                        <input type="number" min="1" value={area} onChange={(e) => setArea(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 outline-none font-semibold text-slate-700" placeholder="0" />
+                                                    </div>
+                                                    <div className="col-span-1">
+                                                        <label className="block text-xs font-medium text-slate-500 mb-1">Độ cao trần</label>
+                                                        <select value={ceilingHeight} onChange={(e) => setCeilingHeight(e.target.value)} className="w-full px-2 py-2 text-sm border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 outline-none bg-white truncate">
+                                                            {Object.entries(HEIGHT_FACTORS).map(([k, d]) => <option key={k} value={k}>{d.label}</option>)}
+                                                        </select>
                                                     </div>
                                                 </div>
-                                                <div className="md:text-right print:text-left print:mt-4">
-                                                    <div className="inline-block bg-slate-700 py-2 px-4 rounded-lg border border-slate-600 print:bg-transparent print:border-none print:p-0">
-                                                        <div className="text-xs text-yellow-400 font-bold uppercase mb-1 flex items-center justify-end gap-1 print:justify-start print:text-black">
-                                                            <Info className="w-3 h-3" /> Gợi ý hệ thống
-                                                        </div>
-                                                        <div className="text-sm font-medium print:text-black">
-                                                            {getRecommendation(totalStats.hp)}
-                                                        </div>
+
+                                                <div>
+                                                    <label className="block text-xs font-medium text-slate-500 mb-1">Loại không gian</label>
+                                                    <select value={zoneType} onChange={(e) => setZoneType(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 outline-none bg-white">
+                                                        {Object.entries(groupedOptions).map(([group, items]) => (
+                                                            <optgroup key={group} label={group}>{items.map(i => <option key={i.key} value={i.key}>{i.label}</option>)}</optgroup>
+                                                        ))}
+                                                    </select>
+                                                    <div className="mt-1 flex items-center justify-between text-[11px] text-slate-500 px-1">
+                                                        <span className="font-medium text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">{LOAD_FACTORS[zoneType].value} W/m²</span>
+                                                        <span className="italic truncate ml-2 max-w-[150px]">{LOAD_FACTORS[zoneType].desc}</span>
                                                     </div>
                                                 </div>
                                             </div>
+
+                                            {result && (
+                                                <div className="mt-4 pt-3 border-t border-slate-100">
+                                                    <div className="flex justify-between items-end mb-3">
+                                                        <div><p className="text-[10px] text-slate-400 uppercase font-bold">Công suất</p><p className="text-xl font-bold text-slate-700">{result.kw} <span className="text-xs font-normal text-slate-500">kW</span></p></div>
+                                                        <div className="text-right"><p className="text-sm font-medium text-blue-600">{result.hp} HP</p><p className="text-[10px] text-slate-400">{result.btu.toLocaleString()} BTU</p></div>
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <button onClick={() => { setEditingId(null); setZoneName(''); setArea(''); setResult(null); }} className="px-3 py-1.5 border border-slate-200 text-slate-500 rounded hover:bg-slate-50 text-xs font-medium"><RotateCcw className="w-3.5 h-3.5" /></button>
+                                                        <button onClick={handleSaveZone} className={`flex-1 py-1.5 rounded text-xs font-bold text-white shadow-sm flex items-center justify-center gap-1 ${editingId ? 'bg-orange-500 hover:bg-orange-600' : 'bg-blue-600 hover:bg-blue-700'}`}>
+                                                            {editingId ? <Pencil className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />} {editingId ? 'Cập nhật' : 'Thêm vào bảng'}
+                                                        </button>
+                                                        {editingId && <button onClick={() => { setEditingId(null); setZoneName(''); setArea(''); setResult(null); }} className="px-3 py-1.5 border border-red-200 text-red-500 bg-red-50 rounded hover:bg-red-100 text-xs font-medium">Hủy</button>}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
-                                    )}
+                                    </div>
+
+                                    {/* TABLE (Takes remaining width) */}
+                                    <div className="flex-1 min-w-0 print:w-full">
+                                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden flex flex-col h-full min-h-[400px] print:shadow-none print:border-none print:h-auto">
+                                            <div className="bg-slate-50/50 px-4 py-3 border-b border-slate-200 flex justify-between items-center print:bg-white print:border-b-2 print:px-0">
+                                                <h3 className="font-bold text-slate-700 text-sm flex items-center gap-2"><List className="w-4 h-4 text-slate-400" /> Bảng Tổng Hợp</h3>
+                                                {savedZones.length > 0 && (
+                                                    <div className="flex gap-2 no-print">
+                                                        <button onClick={handlePrint} className="flex items-center gap-1 px-2 py-1 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded text-xs font-medium transition" title="In"><Printer className="w-3 h-3" /> In</button>
+                                                        <button onClick={copyToClipboard} className="flex items-center gap-1 px-2 py-1 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded text-xs font-medium transition"><Copy className="w-3 h-3" /> Copy</button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            
+                                            <div className="overflow-x-auto flex-1">
+                                                <table className="w-full text-sm text-left">
+                                                    <thead className="bg-slate-50 text-slate-500 font-semibold text-xs sticky top-0 print:bg-white print:text-black print:border-b">
+                                                        <tr>
+                                                            <th className="px-4 py-3 w-10 text-center">#</th>
+                                                            <th className="px-4 py-3">Khu vực / Loại</th>
+                                                            <th className="px-4 py-3 text-right">Diện tích</th>
+                                                            <th className="px-4 py-3 text-right text-slate-700">kW Lạnh</th>
+                                                            <th className="px-4 py-3 text-right">HP</th>
+                                                            <th className="px-4 py-3 text-right text-slate-400">BTU/h</th>
+                                                            <th className="px-2 py-3 text-center w-20 no-print"></th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-100 print:divide-slate-200">
+                                                        {savedZones.length === 0 ? (
+                                                            <tr><td colSpan="7" className="px-4 py-12 text-center text-slate-400 text-xs italic">Chưa có dữ liệu. Vui lòng nhập bên trái.</td></tr>
+                                                        ) : (
+                                                            savedZones.map((zone, index) => (
+                                                                <tr key={zone.id} className={`hover:bg-slate-50 group transition ${editingId === zone.id ? 'bg-blue-50' : ''} print:hover:bg-transparent`}>
+                                                                    <td className="px-4 py-2.5 text-center text-slate-400 text-xs">{index + 1}</td>
+                                                                    <td className="px-4 py-2.5">
+                                                                        <div className="font-medium text-slate-700">{zone.name}</div>
+                                                                        <div className="text-xs text-slate-400 flex flex-col sm:flex-row sm:gap-2">
+                                                                            <span>{zone.zoneTypeLabel}</span>
+                                                                            <span className="hidden sm:inline text-slate-300">|</span>
+                                                                            <span>Trần: {zone.ceilingHeightLabel}</span>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td className="px-4 py-2.5 text-right font-medium text-slate-600">{zone.area} m²</td>
+                                                                    <td className="px-4 py-2.5 text-right font-bold text-blue-600">{zone.kw}</td>
+                                                                    <td className="px-4 py-2.5 text-right font-medium">{zone.hp}</td>
+                                                                    <td className="px-4 py-2.5 text-right text-slate-400 text-xs">{zone.btu.toLocaleString()}</td>
+                                                                    <td className="px-2 py-2.5 text-center no-print">
+                                                                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition">
+                                                                            <button onClick={() => handleEditZone(zone)} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded"><Pencil className="w-3.5 h-3.5" /></button>
+                                                                            <button onClick={() => handleDeleteZone(zone.id)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded"><Trash2 className="w-3.5 h-3.5" /></button>
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            ))
+                                                        )}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+
+                                            {savedZones.length > 0 && (
+                                                <div className="bg-slate-800 text-white p-4 print:bg-white print:text-black print:border-t-2 print:border-black rounded-b-lg print:rounded-none">
+                                                    <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                                                        <div>
+                                                            <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1 print:text-black print:font-bold">Tổng cộng</div>
+                                                            <div className="flex items-baseline gap-3 print:block">
+                                                                <div className="text-xl font-bold text-white print:text-black">{totalStats.kw.toFixed(2)} kW</div>
+                                                                <div className="text-sm text-slate-300 print:text-black">~ {totalStats.hp.toFixed(1)} HP</div>
+                                                                <div className="text-xs text-slate-500 pl-3 border-l border-slate-600 print:border-none print:pl-0 print:mt-1">{totalStats.area} m² sàn</div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-right print:text-left">
+                                                            <div className="text-[10px] text-yellow-500 font-bold uppercase mb-1 print:text-black">Gợi ý hệ thống</div>
+                                                            <div className="text-sm font-medium print:text-black">{getRecommendation(totalStats.hp)}</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-
                         </div>
                     </div>
                 </div>
             );
         };
 
-        // Render với cơ chế try-catch
-        try {
-            const root = ReactDOM.createRoot(document.getElementById('root'));
-            root.render(<MultiPurposeLoadCalc />);
-        } catch (error) {
-            document.body.innerHTML = '<h3 style="color:red; text-align:center; margin-top:50px">Lỗi khởi chạy ứng dụng! Hãy kiểm tra console (F12) để biết chi tiết.</h3>';
-            console.error("Lỗi Render:", error);
-        }
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
     </script>
 </body>
 </html>
-
