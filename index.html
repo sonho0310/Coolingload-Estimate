@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tính Tải Lạnh Đa Dụng</title>
+    <title>CoolingLoadEstimate</title>
     
     <!-- React & ReactDOM (Sử dụng CDN ổn định) -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -94,8 +94,8 @@
             // Các giá trị đã được quy đổi làm tròn từ BTU/m2 sang W/m2 cho chẵn
             const loadFactors = {
                 // --- NHÓM SIÊU THỊ ---
-                sales_general: { label: 'Siêu thị - Khu bán hàng chung', value: 220, desc: 'Kệ đồ khô, mật độ trung bình.', group: 'Siêu thị / Thương mại' },
-                sales_fresh: { label: 'Siêu thị - Khu đồ tươi/đông lạnh', value: 190, desc: 'Có tủ mát hỗ trợ tải.', group: 'Siêu thị / Thương mại' },
+                sales_general: { label: 'Siêu thị - Khu bán hàng chung', value: 250, desc: 'Kệ đồ khô, mật độ trung bình.', group: 'Siêu thị / Thương mại' },
+                sales_fresh: { label: 'Siêu thị - Khu đồ tươi/đông lạnh', value: 250, desc: 'Có tủ mát hỗ trợ tải.', group: 'Siêu thị / Thương mại' },
                 checkout: { label: 'Siêu thị - Thu ngân/Cửa', value: 280, desc: 'Mật độ người cao, thất thoát nhiệt.', group: 'Siêu thị / Thương mại' },
                 warehouse: { label: 'Kho chứa hàng', value: 160, desc: 'Ít người, chủ yếu bảo quản.', group: 'Siêu thị / Thương mại' },
 
@@ -110,7 +110,7 @@
 
                 // --- NHÓM GIÁO DỤC ---
                 school_class: { label: 'Lớp học tiêu chuẩn', value: 220, desc: 'Đông người nhưng ít thiết bị nhiệt.', group: 'Trường học / Nhà trẻ' },
-                school_nap: { label: 'Phòng ngủ trưa (Nhà trẻ)', value: 175, desc: 'Yêu cầu yên tĩnh, tải thấp.', group: 'Trường học / Nhà trẻ' },
+                school_nap: { label: 'Nhà trẻ', value: 250, desc: 'Yêu cầu yên tĩnh, tải thấp.', group: 'Trường học / Nhà trẻ' },
                 school_hall: { label: 'Hội trường / Phòng chức năng', value: 265, desc: 'Không gian lớn, trần cao.', group: 'Trường học / Nhà trẻ' },
 
                 // --- NHÓM DỊCH VỤ KHÁC ---
@@ -549,3 +549,4 @@
     </script>
 </body>
 </html>
+
