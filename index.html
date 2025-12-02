@@ -90,32 +90,33 @@
             const [savedZones, setSavedZones] = useState([]);
             const [editingId, setEditingId] = useState(null);
 
-            // CẬP NHẬT: Định mức nhiệt tải chi tiết cho nhiều loại hình (BTU/m2)
+            // CẬP NHẬT: Định mức tải nhiệt (W/m2)
+            // Các giá trị đã được quy đổi làm tròn từ BTU/m2 sang W/m2 cho chẵn
             const loadFactors = {
                 // --- NHÓM SIÊU THỊ ---
-                sales_general: { label: 'Siêu thị - Khu bán hàng chung', value: 750, desc: 'Kệ đồ khô, mật độ trung bình.', group: 'Siêu thị / Thương mại' },
-                sales_fresh: { label: 'Siêu thị - Khu đồ tươi/đông lạnh', value: 650, desc: 'Có tủ mát hỗ trợ tải.', group: 'Siêu thị / Thương mại' },
-                checkout: { label: 'Siêu thị - Thu ngân/Cửa', value: 950, desc: 'Mật độ người cao, thất thoát nhiệt.', group: 'Siêu thị / Thương mại' },
-                warehouse: { label: 'Kho chứa hàng', value: 550, desc: 'Ít người, chủ yếu bảo quản.', group: 'Siêu thị / Thương mại' },
+                sales_general: { label: 'Siêu thị - Khu bán hàng chung', value: 220, desc: 'Kệ đồ khô, mật độ trung bình.', group: 'Siêu thị / Thương mại' },
+                sales_fresh: { label: 'Siêu thị - Khu đồ tươi/đông lạnh', value: 190, desc: 'Có tủ mát hỗ trợ tải.', group: 'Siêu thị / Thương mại' },
+                checkout: { label: 'Siêu thị - Thu ngân/Cửa', value: 280, desc: 'Mật độ người cao, thất thoát nhiệt.', group: 'Siêu thị / Thương mại' },
+                warehouse: { label: 'Kho chứa hàng', value: 160, desc: 'Ít người, chủ yếu bảo quản.', group: 'Siêu thị / Thương mại' },
 
                 // --- NHÓM NHÀ Ở / CĂN HỘ ---
-                res_bedroom: { label: 'Nhà ở - Phòng ngủ', value: 600, desc: 'Tải nhiệt thấp, không gian kín.', group: 'Nhà ở / Căn hộ' },
-                res_living: { label: 'Nhà ở - Phòng khách', value: 800, desc: 'Không gian mở, TV, đèn, đi lại.', group: 'Nhà ở / Căn hộ' },
-                res_kitchen: { label: 'Nhà ở - Bếp ăn', value: 900, desc: 'Sinh nhiệt từ nấu nướng.', group: 'Nhà ở / Căn hộ' },
+                res_bedroom: { label: 'Nhà ở - Phòng ngủ', value: 175, desc: 'Tải nhiệt thấp, không gian kín.', group: 'Nhà ở / Căn hộ' },
+                res_living: { label: 'Nhà ở - Phòng khách', value: 235, desc: 'Không gian mở, TV, đèn, đi lại.', group: 'Nhà ở / Căn hộ' },
+                res_kitchen: { label: 'Nhà ở - Bếp ăn', value: 265, desc: 'Sinh nhiệt từ nấu nướng.', group: 'Nhà ở / Căn hộ' },
 
                 // --- NHÓM VĂN PHÒNG ---
-                office_general: { label: 'Văn phòng - Làm việc chung', value: 750, desc: 'Máy tính, người ngồi tĩnh.', group: 'Văn phòng' },
-                office_meeting: { label: 'Văn phòng - Phòng họp', value: 1000, desc: 'Mật độ người dày đặc, máy chiếu.', group: 'Văn phòng' },
+                office_general: { label: 'Văn phòng - Làm việc chung', value: 220, desc: 'Máy tính, người ngồi tĩnh.', group: 'Văn phòng' },
+                office_meeting: { label: 'Văn phòng - Phòng họp', value: 295, desc: 'Mật độ người dày đặc, máy chiếu.', group: 'Văn phòng' },
 
                 // --- NHÓM GIÁO DỤC ---
-                school_class: { label: 'Lớp học tiêu chuẩn', value: 750, desc: 'Đông người nhưng ít thiết bị nhiệt.', group: 'Trường học / Nhà trẻ' },
-                school_nap: { label: 'Phòng ngủ trưa (Nhà trẻ)', value: 600, desc: 'Yêu cầu yên tĩnh, tải thấp.', group: 'Trường học / Nhà trẻ' },
-                school_hall: { label: 'Hội trường / Phòng chức năng', value: 900, desc: 'Không gian lớn, trần cao.', group: 'Trường học / Nhà trẻ' },
+                school_class: { label: 'Lớp học tiêu chuẩn', value: 220, desc: 'Đông người nhưng ít thiết bị nhiệt.', group: 'Trường học / Nhà trẻ' },
+                school_nap: { label: 'Phòng ngủ trưa (Nhà trẻ)', value: 175, desc: 'Yêu cầu yên tĩnh, tải thấp.', group: 'Trường học / Nhà trẻ' },
+                school_hall: { label: 'Hội trường / Phòng chức năng', value: 265, desc: 'Không gian lớn, trần cao.', group: 'Trường học / Nhà trẻ' },
 
                 // --- NHÓM DỊCH VỤ KHÁC ---
-                restaurant: { label: 'Nhà hàng / Quán ăn', value: 1000, desc: 'Mùi thức ăn, người ra vào nhiều.', group: 'Dịch vụ khác' },
-                hotel_room: { label: 'Khách sạn - Phòng ngủ', value: 650, desc: 'Tải tương đương phòng ngủ nhà ở.', group: 'Dịch vụ khác' },
-                server_room: { label: 'Phòng Server / Máy chủ', value: 1500, desc: 'Thiết bị tỏa nhiệt cực lớn (Cần tính kỹ).', group: 'Dịch vụ khác' },
+                restaurant: { label: 'Nhà hàng / Quán ăn', value: 295, desc: 'Mùi thức ăn, người ra vào nhiều.', group: 'Dịch vụ khác' },
+                hotel_room: { label: 'Khách sạn - Phòng ngủ', value: 190, desc: 'Tải tương đương phòng ngủ nhà ở.', group: 'Dịch vụ khác' },
+                server_room: { label: 'Phòng Server / Máy chủ', value: 440, desc: 'Thiết bị tỏa nhiệt cực lớn (Cần tính kỹ).', group: 'Dịch vụ khác' },
             };
 
             const heightFactors = {
@@ -144,12 +145,19 @@
                     return;
                 }
 
+                // baseLoadPerM2 bây giờ là Watt/m2
                 const baseLoadPerM2 = loadFactors[zoneType].value;
                 const heightMultiplier = heightFactors[ceilingHeight].multiplier;
 
-                const totalBtu = Math.round(areaNum * baseLoadPerM2 * heightMultiplier);
+                // Tổng Watt = m2 * W/m2 * hệ số trần
+                const totalWatts = Math.round(areaNum * baseLoadPerM2 * heightMultiplier);
+                
+                // Quy đổi sang BTU (1 Watt ~ 3.412142 BTU/h)
+                const totalBtu = Math.round(totalWatts * 3.412142);
+                
                 const hp = (totalBtu / 9000).toFixed(1);
-                const kw = (totalBtu / 3412).toFixed(1);
+                // kW Lạnh (Thermal) = Total Watts / 1000
+                const kw = (totalWatts / 1000).toFixed(2);
                 const ton = (totalBtu / 12000).toFixed(1);
 
                 setResult({ btu: totalBtu, hp: hp, kw: kw, ton: ton });
@@ -256,8 +264,10 @@
                 return "Hệ thống trung tâm VRV/VRF hoặc Chiller";
             };
 
-            const btuToWatt = (btu) => Math.round(btu * 0.293071);
-            const btuToKw = (btu) => (btu * 0.293071 / 1000).toFixed(3);
+            // Helper đổi ngược Watt sang BTU để hiển thị
+            const wattToBtu = (watt) => Math.round(watt * 3.412142);
+            // Watt sang kW
+            const wattToKw = (watt) => (watt / 1000).toFixed(3);
 
             return (
                 <div className="min-h-screen bg-slate-50 p-4 md:p-6 font-sans text-slate-800 print:bg-white print:p-0">
@@ -332,9 +342,8 @@
                                             <div className="mt-2 bg-blue-50 p-2 rounded border border-blue-100 text-xs text-blue-800">
                                                 <div className="font-semibold mb-1">Mật độ tải lạnh định mức:</div>
                                                 <div className="grid grid-cols-2 gap-x-2 gap-y-1 whitespace-nowrap">
-                                                    <span>• {loadFactors[zoneType].value} BTU/m²</span>
-                                                    <span>• {btuToWatt(loadFactors[zoneType].value)} W/m²</span>
-                                                    <span className="col-span-2">• {btuToKw(loadFactors[zoneType].value)} kW/m²</span>
+                                                    <span>• {loadFactors[zoneType].value} W/m²</span>
+                                                    <span>• {wattToBtu(loadFactors[zoneType].value)} BTU/m²</span>
                                                 </div>
                                                 <div className="mt-1 pt-1 border-t border-blue-200 text-slate-500 italic text-wrap">
                                                     {loadFactors[zoneType].desc}
@@ -360,8 +369,8 @@
                                     {result && (
                                         <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-100 text-center">
                                             <div className="text-xs text-green-600 font-bold uppercase mb-1">Kết quả tính nhanh</div>
-                                            <div className="text-2xl font-bold text-green-700">{result.btu.toLocaleString()} <span className="text-sm font-medium">BTU/h</span></div>
-                                            <div className="text-sm text-green-600 font-medium">~ {result.hp} HP | {result.kw} kW</div>
+                                            <div className="text-2xl font-bold text-green-700">{result.kw} <span className="text-sm font-medium">kW</span></div>
+                                            <div className="text-sm text-green-600 font-medium">~ {result.hp} HP | {result.btu.toLocaleString()} BTU</div>
                                         </div>
                                     )}
 
